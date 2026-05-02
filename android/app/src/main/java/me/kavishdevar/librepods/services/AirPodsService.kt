@@ -91,7 +91,9 @@ import me.kavishdevar.librepods.bluetooth.BluetoothConnectionManager
 import me.kavishdevar.librepods.data.AirPodsInstance
 import me.kavishdevar.librepods.data.AirPodsModels
 import me.kavishdevar.librepods.data.AirPodsNotifications
+import me.kavishdevar.librepods.services.notifications.DisplayBattery
 import me.kavishdevar.librepods.services.notifications.LiveUpdateNotification
+import me.kavishdevar.librepods.services.notifications.RememberedBatteryCache
 import me.kavishdevar.librepods.data.Battery
 import me.kavishdevar.librepods.data.BatteryComponent
 import me.kavishdevar.librepods.data.BatteryStatus
@@ -221,6 +223,23 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
     private var wasConnectedForLive: Boolean = false
 
     private fun currentListeningModeInt(): Int = ancNotification.status
+
+    private val rememberedCache by lazy { RememberedBatteryCache(applicationContext) }
+
+    private fun rememberedTtlMillis(): Long {
+        val hours = sharedPreferences.getInt("remembered_battery_hours", 8).coerceIn(1, 24)
+        return hours.toLong() * 60L * 60L * 1000L
+    }
+
+    private fun rememberedEnabled(): Boolean =
+        sharedPreferences.getBoolean("remembered_battery_enabled", true)
+
+    private fun computeDisplayBattery(live: List<Battery>): List<DisplayBattery> {
+        if (!rememberedEnabled()) {
+            return live.map { DisplayBattery(it, isRemembered = false, rememberedAtMillis = null) }
+        }
+        return rememberedCache.getMerged(live, rememberedTtlMillis())
+    }
     private val packetLogKey = "packet_log"
     private val _packetLogsFlow = MutableStateFlow<Set<String>>(emptySet())
     val packetLogsFlow: StateFlow<Set<String>> get() = _packetLogsFlow
@@ -363,7 +382,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                     LiveUpdateNotification.show(
                         this@AirPodsService.applicationContext,
                         name,
-                        battery,
+                        computeDisplayBattery(battery),
                         headsUp = true,
                         currentListeningMode = currentListeningModeInt()
                     )
@@ -952,7 +971,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                         LiveUpdateNotification.headsUpOnListeningModeChange(
                             this@AirPodsService.applicationContext,
                             name,
-                            batteryNotification.getBattery(),
+                            computeDisplayBattery(batteryNotification.getBattery()),
                             newMode
                         )
                     }
@@ -1713,7 +1732,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 LiveUpdateNotification.show(
                     service.applicationContext,
                     name,
-                    battery,
+                    computeDisplayBattery(battery),
                     headsUp = true,
                     currentListeningMode = currentListeningModeInt()
                 )
@@ -1943,12 +1962,13 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             )
             it.setOnClickPendingIntent(R.id.battery_widget, openActivityIntent)
 
-            val leftBattery =
-                batteryNotification.getBattery().find { it.component == BatteryComponent.LEFT }
-            val rightBattery =
-                batteryNotification.getBattery().find { it.component == BatteryComponent.RIGHT }
-            val caseBattery =
-                batteryNotification.getBattery().find { it.component == BatteryComponent.CASE }
+            val displayList = computeDisplayBattery(batteryNotification.getBattery())
+            val leftDisplay = displayList.firstOrNull { it.component == BatteryComponent.LEFT }
+            val rightDisplay = displayList.firstOrNull { it.component == BatteryComponent.RIGHT }
+            val caseDisplay = displayList.firstOrNull { it.component == BatteryComponent.CASE }
+            val leftBattery = leftDisplay?.takeIf { it.status != BatteryStatus.DISCONNECTED }?.battery
+            val rightBattery = rightDisplay?.takeIf { it.status != BatteryStatus.DISCONNECTED }?.battery
+            val caseBattery = caseDisplay?.takeIf { it.status != BatteryStatus.DISCONNECTED }?.battery
 
             it.setTextViewText(R.id.left_battery_widget, leftBattery?.let {
                 "${it.level}%"
@@ -1959,6 +1979,14 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             it.setViewVisibility(
                 R.id.left_charging_icon,
                 if (leftBattery?.status == BatteryStatus.CHARGING) View.VISIBLE else View.GONE
+            )
+            it.setFloat(
+                R.id.left_battery_widget, "setAlpha",
+                if (leftDisplay?.isRemembered == true) 0.5f else 1f
+            )
+            it.setFloat(
+                R.id.left_battery_progress, "setAlpha",
+                if (leftDisplay?.isRemembered == true) 0.5f else 1f
             )
 
             it.setTextViewText(R.id.right_battery_widget, rightBattery?.let {
@@ -1971,6 +1999,14 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 R.id.right_charging_icon,
                 if (rightBattery?.status == BatteryStatus.CHARGING) View.VISIBLE else View.GONE
             )
+            it.setFloat(
+                R.id.right_battery_widget, "setAlpha",
+                if (rightDisplay?.isRemembered == true) 0.5f else 1f
+            )
+            it.setFloat(
+                R.id.right_battery_progress, "setAlpha",
+                if (rightDisplay?.isRemembered == true) 0.5f else 1f
+            )
 
             it.setTextViewText(R.id.case_battery_widget, caseBattery?.let {
                 "${it.level}%"
@@ -1981,6 +2017,14 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             it.setViewVisibility(
                 R.id.case_charging_icon,
                 if (caseBattery?.status == BatteryStatus.CHARGING) View.VISIBLE else View.GONE
+            )
+            it.setFloat(
+                R.id.case_battery_widget, "setAlpha",
+                if (caseDisplay?.isRemembered == true) 0.5f else 1f
+            )
+            it.setFloat(
+                R.id.case_battery_progress, "setAlpha",
+                if (caseDisplay?.isRemembered == true) 0.5f else 1f
             )
 
             it.setViewVisibility(
@@ -2010,6 +2054,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
     @SuppressLint("MissingPermission")
     @OptIn(ExperimentalMaterial3Api::class)
     fun updateBattery() {
+        if (rememberedEnabled()) {
+            rememberedCache.record(batteryNotification.getBattery())
+        }
         setBatteryMetadata()
         updateBatteryWidget()
         sendBatteryBroadcast()
@@ -2097,11 +2144,12 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                     it.status != BatteryStatus.DISCONNECTED && it.level > 0
                 }
                 val mode = currentListeningModeInt()
+                val display = computeDisplayBattery(batteryList)
                 if (!wasConnectedForLive && hasMeaningfulBattery) {
-                    LiveUpdateNotification.show(this, resolvedName, batteryList, headsUp = true, currentListeningMode = mode)
+                    LiveUpdateNotification.show(this, resolvedName, display, headsUp = true, currentListeningMode = mode)
                     wasConnectedForLive = true
                 } else if (wasConnectedForLive) {
-                    LiveUpdateNotification.update(this, resolvedName, batteryList, currentListeningMode = mode)
+                    LiveUpdateNotification.update(this, resolvedName, display, currentListeningMode = mode)
                 }
                 LiveUpdateNotification.checkLowBattery(this, batteryList)
                 notificationManager.cancel(1)
@@ -3019,6 +3067,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 //        }
         return batteryNotification.getBattery()
     }
+
+    fun getDisplayBattery(): List<DisplayBattery> =
+        computeDisplayBattery(batteryNotification.getBattery())
 
     fun getANC(): Int {
 //        if (!isConnectedLocally && CrossDevice.isAvailable) {

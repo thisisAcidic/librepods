@@ -48,23 +48,23 @@ object LiveUpdateNotification {
     fun show(
         context: Context,
         airpodsName: String,
-        batteryList: List<Battery>,
+        displayList: List<DisplayBattery>,
         headsUp: Boolean,
         currentListeningMode: Int
     ) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        val builder = buildMain(context, airpodsName, batteryList, headsUp, currentListeningMode)
+        val builder = buildMain(context, airpodsName, displayList, headsUp, currentListeningMode)
         nm.notify(NOTIF_ID_MAIN, builder.build())
     }
 
     fun update(
         context: Context,
         airpodsName: String,
-        batteryList: List<Battery>,
+        displayList: List<DisplayBattery>,
         currentListeningMode: Int
     ) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        val builder = buildMain(context, airpodsName, batteryList, headsUp = false, currentListeningMode)
+        val builder = buildMain(context, airpodsName, displayList, headsUp = false, currentListeningMode)
         nm.notify(NOTIF_ID_MAIN, builder.build())
     }
 
@@ -123,11 +123,11 @@ object LiveUpdateNotification {
     fun headsUpOnListeningModeChange(
         context: Context,
         airpodsName: String,
-        batteryList: List<Battery>,
+        displayList: List<DisplayBattery>,
         newMode: Byte
     ) {
         if (!state.shouldFireListeningModeChange(newMode)) return
-        show(context, airpodsName, batteryList, headsUp = true, currentListeningMode = newMode.toInt())
+        show(context, airpodsName, displayList, headsUp = true, currentListeningMode = newMode.toInt())
     }
 
     fun cancelAll(context: Context) {
@@ -142,41 +142,46 @@ object LiveUpdateNotification {
     private fun buildMain(
         context: Context,
         airpodsName: String,
-        batteryList: List<Battery>,
+        displayList: List<DisplayBattery>,
         headsUp: Boolean,
         currentListeningMode: Int
     ): NotificationCompat.Builder {
-        val left = batteryList.firstOrNull { it.component == BatteryComponent.LEFT }
-        val right = batteryList.firstOrNull { it.component == BatteryComponent.RIGHT }
-        val case = batteryList.firstOrNull { it.component == BatteryComponent.CASE }
+        val left = displayList.firstOrNull { it.component == BatteryComponent.LEFT }
+        val right = displayList.firstOrNull { it.component == BatteryComponent.RIGHT }
+        val case = displayList.firstOrNull { it.component == BatteryComponent.CASE }
 
-        val lowestEar = listOfNotNull(left, right)
-            .filter { it.status != BatteryStatus.DISCONNECTED }
-            .minByOrNull { it.level }
-            ?.level ?: 0
+        val liveEars = listOfNotNull(left, right).filter {
+            it.status != BatteryStatus.DISCONNECTED && !it.isRemembered
+        }
+        val anyEar = listOfNotNull(left, right).filter { it.status != BatteryStatus.DISCONNECTED }
+        val lowestLiveEar = liveEars.minByOrNull { it.level }?.level
+        val lowestAnyEar = anyEar.minByOrNull { it.level }?.level
+        val anyRememberedEar = anyEar.any { it.isRemembered }
 
-        val expandedBody = buildString {
-            left?.takeIf { it.status != BatteryStatus.DISCONNECTED }?.let {
-                append("L ")
-                if (it.status == BatteryStatus.CHARGING) append("⚡")
-                append("${it.level}%")
-            }
-            right?.takeIf { it.status != BatteryStatus.DISCONNECTED }?.let {
-                if (isNotEmpty()) append(" · ")
-                append("R ")
-                if (it.status == BatteryStatus.CHARGING) append("⚡")
-                append("${it.level}%")
-            }
-            case?.takeIf { it.status != BatteryStatus.DISCONNECTED }?.let {
-                if (isNotEmpty()) append(" · ")
-                append("Case ")
-                if (it.status == BatteryStatus.CHARGING) append("⚡")
-                append("${it.level}%")
-            }
+        fun renderEntry(label: String, entry: DisplayBattery?): String? {
+            if (entry == null || entry.status == BatteryStatus.DISCONNECTED) return null
+            val charging = if (entry.status == BatteryStatus.CHARGING) "⚡" else ""
+            val core = "$label $charging${entry.level}%"
+            return if (entry.isRemembered) "($core)" else core
+        }
+
+        val parts = listOfNotNull(
+            renderEntry("L", left),
+            renderEntry("R", right),
+            renderEntry("Case", case)
+        )
+        val expandedBody = parts.joinToString(" · ")
+
+        val progressValue = lowestLiveEar ?: lowestAnyEar ?: 0
+        val shortText = when {
+            lowestLiveEar != null -> "${lowestLiveEar}%"
+            lowestAnyEar != null && anyRememberedEar -> "~${lowestAnyEar}%"
+            lowestAnyEar != null -> "${lowestAnyEar}%"
+            else -> ""
         }
 
         val progressStyle = NotificationCompat.ProgressStyle()
-            .setProgress(lowestEar)
+            .setProgress(progressValue)
 
         val samsungLiveExtras = Bundle().apply {
             putInt("android.ongoingActivityNoti.style", 1)
@@ -185,8 +190,8 @@ object LiveUpdateNotification {
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.airpods_live_update_icon)
             .setContentTitle(airpodsName)
-            .setContentText(if (expandedBody.isNotEmpty()) expandedBody else "$lowestEar%")
-            .setShortCriticalText("$lowestEar%")
+            .setContentText(if (expandedBody.isNotEmpty()) expandedBody else shortText)
+            .setShortCriticalText(shortText)
             .setStyle(progressStyle)
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_STATUS)

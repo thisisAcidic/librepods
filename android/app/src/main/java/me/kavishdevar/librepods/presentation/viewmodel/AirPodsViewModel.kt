@@ -50,6 +50,7 @@ import me.kavishdevar.librepods.data.ControlCommandRepository
 import me.kavishdevar.librepods.data.StemAction
 import me.kavishdevar.librepods.data.XposedRemotePrefProvider
 import me.kavishdevar.librepods.services.AirPodsService
+import me.kavishdevar.librepods.services.notifications.DisplayBattery
 
 @Suppress("ArrayInDataClass")
 data class AirPodsUiState(
@@ -64,6 +65,7 @@ data class AirPodsUiState(
     val offListeningMode: Boolean = true,
 
     val battery: List<Battery> = emptyList(),
+    val displayBattery: List<DisplayBattery> = emptyList(),
     val ancMode: Int = 3,
 
     val modelName: String = "",
@@ -199,7 +201,10 @@ class AirPodsViewModel(
 
                     AirPodsNotifications.BATTERY_DATA -> {
                         _uiState.update {
-                            it.copy(battery = service.getBattery())
+                            it.copy(
+                                battery = service.getBattery(),
+                                displayBattery = service.getDisplayBattery()
+                            )
                         }
                     }
 
@@ -316,7 +321,7 @@ class AirPodsViewModel(
         service.let { service ->
             _uiState.update {
                 it.copy(
-                    isLocallyConnected = service.isConnected(), battery = service.getBattery()
+                    isLocallyConnected = service.isConnected(), battery = service.getBattery(), displayBattery = service.getDisplayBattery()
                 )
             }
         }
