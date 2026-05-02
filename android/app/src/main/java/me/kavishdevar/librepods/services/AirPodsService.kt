@@ -219,6 +219,8 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
     private lateinit var sharedPreferencesLogs: SharedPreferences
     private lateinit var sharedPreferences: SharedPreferences
     private var wasConnectedForLive: Boolean = false
+
+    private fun currentListeningModeInt(): Int = ancNotification.status
     private val packetLogKey = "packet_log"
     private val _packetLogsFlow = MutableStateFlow<Set<String>>(emptySet())
     val packetLogsFlow: StateFlow<Set<String>> get() = _packetLogsFlow
@@ -362,7 +364,8 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                         this@AirPodsService.applicationContext,
                         name,
                         battery,
-                        headsUp = true
+                        headsUp = true,
+                        currentListeningMode = currentListeningModeInt()
                     )
                     wasConnectedForLive = true
                 }
@@ -1711,7 +1714,8 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                     service.applicationContext,
                     name,
                     battery,
-                    headsUp = true
+                    headsUp = true,
+                    currentListeningMode = currentListeningModeInt()
                 )
             }
         }
@@ -2092,11 +2096,12 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 val hasMeaningfulBattery = batteryList.any {
                     it.status != BatteryStatus.DISCONNECTED && it.level > 0
                 }
+                val mode = currentListeningModeInt()
                 if (!wasConnectedForLive && hasMeaningfulBattery) {
-                    LiveUpdateNotification.show(this, resolvedName, batteryList, headsUp = true)
+                    LiveUpdateNotification.show(this, resolvedName, batteryList, headsUp = true, currentListeningMode = mode)
                     wasConnectedForLive = true
                 } else if (wasConnectedForLive) {
-                    LiveUpdateNotification.update(this, resolvedName, batteryList)
+                    LiveUpdateNotification.update(this, resolvedName, batteryList, currentListeningMode = mode)
                 }
                 LiveUpdateNotification.checkLowBattery(this, batteryList)
                 notificationManager.cancel(1)
