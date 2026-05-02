@@ -35,7 +35,9 @@ data class AppSettingsUiState(
     val connectionSuccessful: Boolean = false,
     val showBottomSheetPopup: Boolean = true,
     val showIslandPopup: Boolean = true,
-    val showLiveUpdateNotification: Boolean = true
+    val showLiveUpdateNotification: Boolean = true,
+    val rememberedBatteryEnabled: Boolean = true,
+    val rememberedBatteryHours: Int = 8
 )
 
 class AppSettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -99,7 +101,9 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
                 connectionSuccessful = sharedPreferences.getBoolean("connection_successful", false),
                 showBottomSheetPopup = sharedPreferences.getBoolean("show_bottom_sheet_popup", true),
                 showIslandPopup = sharedPreferences.getBoolean("show_island_popup", true),
-                showLiveUpdateNotification = sharedPreferences.getBoolean("show_live_update_notification", true)
+                showLiveUpdateNotification = sharedPreferences.getBoolean("show_live_update_notification", true),
+                rememberedBatteryEnabled = sharedPreferences.getBoolean("remembered_battery_enabled", true),
+                rememberedBatteryHours = sharedPreferences.getInt("remembered_battery_hours", 8)
             )
         }
     }
@@ -203,5 +207,16 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
     fun setShowLiveUpdateNotification(enabled: Boolean) {
         sharedPreferences.edit { putBoolean("show_live_update_notification", enabled) }
         _uiState.update { it.copy(showLiveUpdateNotification = enabled) }
+    }
+
+    fun setRememberedBatteryEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean("remembered_battery_enabled", enabled) }
+        _uiState.update { it.copy(rememberedBatteryEnabled = enabled) }
+    }
+
+    fun setRememberedBatteryHours(hours: Int) {
+        val clamped = hours.coerceIn(1, 24)
+        sharedPreferences.edit { putInt("remembered_battery_hours", clamped) }
+        _uiState.update { it.copy(rememberedBatteryHours = clamped) }
     }
 }
