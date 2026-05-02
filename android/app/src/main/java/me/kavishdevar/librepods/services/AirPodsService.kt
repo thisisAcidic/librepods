@@ -348,6 +348,25 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 caseCharging = caseCharging == true
             )
             updateBattery()
+
+            if (!wasConnectedForLive
+                && sharedPreferences.getBoolean("show_live_update_notification", true)
+            ) {
+                val battery = batteryNotification.getBattery()
+                val hasMeaningfulBattery = battery.any {
+                    it.status != BatteryStatus.DISCONNECTED && it.level > 0
+                }
+                if (hasMeaningfulBattery) {
+                    val name = sharedPreferences.getString("name", "AirPods Pro") ?: "AirPods"
+                    LiveUpdateNotification.show(
+                        this@AirPodsService.applicationContext,
+                        name,
+                        battery,
+                        headsUp = true
+                    )
+                    wasConnectedForLive = true
+                }
+            }
             Log.d(TAG, "Battery changed")
         }
 
@@ -1682,13 +1701,19 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
     ) {
         Log.d(TAG, "Showing island window")
         if (sharedPreferences.getBoolean("show_live_update_notification", true)) {
-            val name = sharedPreferences.getString("name", "AirPods Pro") ?: "AirPods"
-            LiveUpdateNotification.show(
-                service.applicationContext,
-                name,
-                batteryNotification.getBattery(),
-                headsUp = true
-            )
+            val battery = batteryNotification.getBattery()
+            val hasMeaningfulBattery = battery.any {
+                it.status != BatteryStatus.DISCONNECTED && it.level > 0
+            }
+            if (hasMeaningfulBattery) {
+                val name = sharedPreferences.getString("name", "AirPods Pro") ?: "AirPods"
+                LiveUpdateNotification.show(
+                    service.applicationContext,
+                    name,
+                    battery,
+                    headsUp = true
+                )
+            }
         }
         if (!sharedPreferences.getBoolean("show_island_popup", true)) {
             return
@@ -2064,10 +2089,13 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
         if (connected && (config.bleOnlyMode || socket.isConnected)) {
             if (liveEnabled && batteryList != null) {
-                if (!wasConnectedForLive) {
+                val hasMeaningfulBattery = batteryList.any {
+                    it.status != BatteryStatus.DISCONNECTED && it.level > 0
+                }
+                if (!wasConnectedForLive && hasMeaningfulBattery) {
                     LiveUpdateNotification.show(this, resolvedName, batteryList, headsUp = true)
                     wasConnectedForLive = true
-                } else {
+                } else if (wasConnectedForLive) {
                     LiveUpdateNotification.update(this, resolvedName, batteryList)
                 }
                 LiveUpdateNotification.checkLowBattery(this, batteryList)

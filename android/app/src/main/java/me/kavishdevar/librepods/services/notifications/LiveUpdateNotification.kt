@@ -2,13 +2,14 @@
 
 package me.kavishdevar.librepods.services.notifications
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import androidx.core.app.NotificationCompat
-import androidx.core.graphics.drawable.IconCompat
 import me.kavishdevar.librepods.MainActivity
 import me.kavishdevar.librepods.R
 import me.kavishdevar.librepods.data.Battery
@@ -81,7 +82,7 @@ object LiveUpdateNotification {
             }
 
             val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.airpods)
+                .setSmallIcon(R.drawable.airpods_live_update_icon)
                 .setContentTitle(context.getString(titleRes, battery.level))
                 .setContentText(context.getString(R.string.live_update_low_battery_body))
                 .setContentIntent(pi)
@@ -97,11 +98,12 @@ object LiveUpdateNotification {
         val caseBattery = batteryList.firstOrNull { it.component == BatteryComponent.CASE }
             ?: return
         if (caseBattery.status == BatteryStatus.DISCONNECTED) return
+        if (caseBattery.level <= 0) return
         if (!state.shouldFireCaseOpenReminder(caseBattery.level)) return
 
         val nm = context.getSystemService(NotificationManager::class.java)
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.airpods)
+            .setSmallIcon(R.drawable.airpods_live_update_icon)
             .setContentTitle(context.getString(R.string.live_update_case_open_title))
             .setContentText(context.getString(R.string.live_update_case_open_body, caseBattery.level))
             .setContentIntent(mainActivityPendingIntent(context))
@@ -172,20 +174,24 @@ object LiveUpdateNotification {
 
         val progressStyle = NotificationCompat.ProgressStyle()
             .setProgress(lowestEar)
-            .setProgressTrackerIcon(
-                IconCompat.createWithResource(context, R.drawable.airpods)
-            )
+
+        val samsungLiveExtras = Bundle().apply {
+            putInt("android.ongoingActivityNoti.style", 1)
+        }
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.airpods)
+            .setSmallIcon(R.drawable.airpods_live_update_icon)
             .setContentTitle(airpodsName)
             .setContentText(if (expandedBody.isNotEmpty()) expandedBody else "$lowestEar%")
+            .setShortCriticalText("$lowestEar%")
             .setStyle(progressStyle)
             .setOngoing(true)
+            .setCategory(Notification.CATEGORY_STATUS)
             .setContentIntent(mainActivityPendingIntent(context))
             .setPriority(if (headsUp) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
             .setOnlyAlertOnce(!headsUp)
             .setRequestPromotedOngoing(true)
+            .addExtras(samsungLiveExtras)
     }
 
     private fun mainActivityPendingIntent(context: Context): PendingIntent {
