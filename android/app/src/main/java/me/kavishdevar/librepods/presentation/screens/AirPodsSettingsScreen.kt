@@ -173,7 +173,7 @@ fun AirPodsSettingsScreen(viewModel: AirPodsViewModel, navController: NavControl
                 item(key = "spacer_top") { Spacer(modifier = Modifier.height(topPadding)) }
                 item(key = "battery") {
                     BatteryView(
-                        batteryList = state.battery,
+                        displayList = state.displayBattery,
                         budsRes = state.instance?.model?.budsRes ?: R.drawable.airpods_pro_2_case,
                         caseRes = state.instance?.model?.caseRes ?: R.drawable.airpods_pro_2_case
                     )

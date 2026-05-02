@@ -48,17 +48,23 @@ import me.kavishdevar.librepods.R
 import me.kavishdevar.librepods.data.Battery
 import me.kavishdevar.librepods.data.BatteryComponent
 import me.kavishdevar.librepods.data.BatteryStatus
+import androidx.compose.ui.draw.alpha
+import me.kavishdevar.librepods.services.notifications.DisplayBattery
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 @Composable
 fun BatteryView(
-    batteryList: List<Battery>,
+    displayList: List<DisplayBattery>,
     budsRes: Int,
     caseRes: Int
 ) {
-    val left = batteryList.find { it.component == BatteryComponent.LEFT }
-    val right = batteryList.find { it.component == BatteryComponent.RIGHT }
-    val case = batteryList.find { it.component == BatteryComponent.CASE }
+    val leftEntry = displayList.find { it.component == BatteryComponent.LEFT }
+    val rightEntry = displayList.find { it.component == BatteryComponent.RIGHT }
+    val caseEntry = displayList.find { it.component == BatteryComponent.CASE }
+
+    val left = leftEntry?.battery
+    val right = rightEntry?.battery
+    val case = caseEntry?.battery
 
     val leftLevel = left?.level ?: 0
     val rightLevel = right?.level ?: 0
@@ -66,6 +72,11 @@ fun BatteryView(
 
     val caseCharging = case?.status == BatteryStatus.CHARGING ||
         case?.status == BatteryStatus.OPTIMIZED_CHARGING
+
+    val leftRemembered = leftEntry?.isRemembered == true
+    val rightRemembered = rightEntry?.isRemembered == true
+    val budsAllRemembered = leftRemembered && rightRemembered
+    val caseRemembered = caseEntry?.isRemembered == true
 
     val singleDisplayed = remember { mutableStateOf(false) }
 
@@ -87,16 +98,19 @@ fun BatteryView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp)
+                        .alpha(if (budsAllRemembered) 0.5f else 1f)
                 )
 
                 if (
                     left?.status == right?.status &&
                     (leftLevel - rightLevel) in -3..3
                 ) {
-                    BatteryIndicator(
-                        leftLevel.coerceAtMost(rightLevel),
-                        left?.status ?: BatteryStatus.NOT_CHARGING
-                    )
+                    Box(modifier = Modifier.alpha(if (leftRemembered || rightRemembered) 0.5f else 1f)) {
+                        BatteryIndicator(
+                            leftLevel.coerceAtMost(rightLevel),
+                            left?.status ?: BatteryStatus.NOT_CHARGING
+                        )
+                    }
                     singleDisplayed.value = true
                 } else {
                     singleDisplayed.value = false
@@ -106,11 +120,13 @@ fun BatteryView(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         if (leftLevel > 0 || left?.status != BatteryStatus.DISCONNECTED) {
-                            BatteryIndicator(
-                                leftLevel,
-                                left?.status ?: BatteryStatus.NOT_CHARGING,
-                                "\uDBC6\uDCE5"
-                            )
+                            Box(modifier = Modifier.alpha(if (leftRemembered) 0.5f else 1f)) {
+                                BatteryIndicator(
+                                    leftLevel,
+                                    left?.status ?: BatteryStatus.NOT_CHARGING,
+                                    "\uDBC6\uDCE5"
+                                )
+                            }
                         }
 
                         if (leftLevel > 0 && rightLevel > 0) {
@@ -118,11 +134,13 @@ fun BatteryView(
                         }
 
                         if (rightLevel > 0 || right?.status != BatteryStatus.DISCONNECTED) {
-                            BatteryIndicator(
-                                rightLevel,
-                                right?.status ?: BatteryStatus.NOT_CHARGING,
-                                "\uDBC6\uDCE8"
-                            )
+                            Box(modifier = Modifier.alpha(if (rightRemembered) 0.5f else 1f)) {
+                                BatteryIndicator(
+                                    rightLevel,
+                                    right?.status ?: BatteryStatus.NOT_CHARGING,
+                                    "\uDBC6\uDCE8"
+                                )
+                            }
                         }
                     }
                 }
@@ -138,14 +156,17 @@ fun BatteryView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp)
+                        .alpha(if (caseRemembered) 0.5f else 1f)
                 )
 
                 if (caseLevel > 0 || case?.status != BatteryStatus.DISCONNECTED) {
-                    BatteryIndicator(
-                        caseLevel,
-                        case?.status ?: BatteryStatus.NOT_CHARGING,
-                        prefix = if (!singleDisplayed.value) "\uDBC3\uDE6C" else ""
-                    )
+                    Box(modifier = Modifier.alpha(if (caseRemembered) 0.5f else 1f)) {
+                        BatteryIndicator(
+                            caseLevel,
+                            case?.status ?: BatteryStatus.NOT_CHARGING,
+                            prefix = if (!singleDisplayed.value) "\uDBC3\uDE6C" else ""
+                        )
+                    }
                 }
             }
         }
@@ -156,9 +177,9 @@ fun BatteryView(
 @Composable
 fun BatteryViewPreview() {
     val fakeBattery = listOf(
-        Battery(BatteryComponent.LEFT, 85, BatteryStatus.CHARGING),
-        Battery(BatteryComponent.RIGHT, 40, BatteryStatus.OPTIMIZED_CHARGING),
-        Battery(BatteryComponent.CASE, 60, BatteryStatus.NOT_CHARGING)
+        DisplayBattery(Battery(BatteryComponent.LEFT, 85, BatteryStatus.CHARGING), false, null),
+        DisplayBattery(Battery(BatteryComponent.RIGHT, 40, BatteryStatus.OPTIMIZED_CHARGING), false, null),
+        DisplayBattery(Battery(BatteryComponent.CASE, 60, BatteryStatus.NOT_CHARGING), true, System.currentTimeMillis())
     )
 
     val bg = if (isSystemInDarkTheme()) Color.Black else Color(0xFFF2F2F7)
@@ -169,7 +190,7 @@ fun BatteryViewPreview() {
             .padding(16.dp)
     ) {
         BatteryView(
-            batteryList = fakeBattery,
+            displayList = fakeBattery,
             budsRes = R.drawable.airpods_pro_2_buds,
             caseRes = R.drawable.airpods_pro_2_case
         )
