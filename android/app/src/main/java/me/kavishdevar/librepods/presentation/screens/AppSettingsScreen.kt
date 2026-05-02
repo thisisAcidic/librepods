@@ -51,8 +51,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlin.math.roundToInt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -156,6 +158,55 @@ fun AppSettingsScreen(
                     onCheckedChange = viewModel::setShowPhoneBatteryInWidget,
                     enabled = state.isPremium
                 )
+
+                Text(
+                    text = stringResource(R.string.battery_section), style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor.copy(alpha = 0.6f),
+                        fontFamily = FontFamily(Font(R.font.sf_pro))
+                    ), modifier = Modifier.padding(16.dp, bottom = 2.dp, top = 24.dp)
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            backgroundColor, RoundedCornerShape(28.dp)
+                        )
+                        .padding(vertical = 4.dp)
+                ) {
+                    StyledToggle(
+                        label = stringResource(R.string.remembered_battery_levels),
+                        description = stringResource(R.string.remembered_battery_levels_description),
+                        checked = state.rememberedBatteryEnabled,
+                        onCheckedChange = viewModel::setRememberedBatteryEnabled,
+                        independent = false
+                    )
+                }
+
+                if (state.rememberedBatteryEnabled) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val sliderHours = remember {
+                        mutableFloatStateOf(state.rememberedBatteryHours.toFloat())
+                    }
+                    StyledSlider(
+                        label = stringResource(R.string.remembered_battery_duration),
+                        value = sliderHours.floatValue,
+                        valueRange = 1f..24f,
+                        startLabel = "1 h",
+                        endLabel = "24 h",
+                        onValueChange = { newValue ->
+                            sliderHours.floatValue = newValue
+                            viewModel.setRememberedBatteryHours(newValue.roundToInt())
+                        },
+                        independent = true,
+                        enabled = true
+                    )
+                }
 
                 Text(
                     text = stringResource(R.string.popup_animations), style = TextStyle(
