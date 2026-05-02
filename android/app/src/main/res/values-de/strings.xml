@@ -1,0 +1,17 @@
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="popup_animations">Popup-Animationen</string>
+    <string name="show_bottom_sheet_popup">Popup unten</string>
+    <string name="show_bottom_sheet_popup_description">Zeigt das Popup im iOS-Stil unten an, wenn AirPods sich verbinden.</string>
+    <string name="show_island_popup">Dynamic Island Popup</string>
+    <string name="show_island_popup_description">Zeigt das Popup im Dynamic-Island-Stil oben für Verbindungs- und Übergabe-Ereignisse.</string>
+    <string name="show_live_update_notification">Live-Update-Benachrichtigung</string>
+    <string name="show_live_update_notification_description">Dauerhafte Benachrichtigung mit Akkustand und Verbindungsstatus. Erscheint bei Verbindung, Übergabe, Hörmoduswechsel und niedrigem Akkustand. Wenn deaktiviert, wird die klassische Benachrichtigung angezeigt.</string>
+    <string name="live_update_low_battery_left">Linker AirPod %1$d%%</string>
+    <string name="live_update_low_battery_right">Rechter AirPod %1$d%%</string>
+    <string name="live_update_low_battery_case">AirPods Case %1$d%%</string>
+    <string name="live_update_low_battery_body">Akku niedrig</string>
+    <string name="live_update_case_open_title">Case-Akku niedrig</string>
+    <string name="live_update_case_open_body">Bald aufladen. Aktuell bei %1$d%%</string>
+    <string name="live_update_channel_name">AirPods Live Update</string>
+    <string name="live_update_channel_description">Dauerhafte Benachrichtigung über Akkustand und Verbindungsstatus mit Hinweis bei wichtigen Ereignissen.</string>
+</resources>

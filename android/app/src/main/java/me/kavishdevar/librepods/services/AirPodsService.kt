@@ -91,6 +91,7 @@ import me.kavishdevar.librepods.bluetooth.BluetoothConnectionManager
 import me.kavishdevar.librepods.data.AirPodsInstance
 import me.kavishdevar.librepods.data.AirPodsModels
 import me.kavishdevar.librepods.data.AirPodsNotifications
+import me.kavishdevar.librepods.services.notifications.LiveUpdateNotification
 import me.kavishdevar.librepods.data.Battery
 import me.kavishdevar.librepods.data.BatteryComponent
 import me.kavishdevar.librepods.data.BatteryStatus
@@ -217,6 +218,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
     private lateinit var sharedPreferencesLogs: SharedPreferences
     private lateinit var sharedPreferences: SharedPreferences
+    private var wasConnectedForLive: Boolean = false
+
+    private fun currentListeningModeInt(): Int = ancNotification.status
     private val packetLogKey = "packet_log"
     private val _packetLogsFlow = MutableStateFlow<Set<String>>(emptySet())
     val packetLogsFlow: StateFlow<Set<String>> get() = _packetLogsFlow
@@ -288,6 +292,12 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                     getSharedPreferences("settings", MODE_PRIVATE).getString("name", "AirPods Pro")
                         ?: "AirPods"
                 )
+                if (sharedPreferences.getBoolean("show_live_update_notification", true)) {
+                    LiveUpdateNotification.showCaseOpenReminder(
+                        this@AirPodsService.applicationContext,
+                        batteryNotification.getBattery()
+                    )
+                }
                 if (socket.isConnected) return
                 val leftLevel = bleManager.getMostRecentStatus()?.leftBattery ?: 0
                 val rightLevel = bleManager.getMostRecentStatus()?.rightBattery ?: 0
@@ -307,6 +317,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 sendBatteryBroadcast()
             } else {
                 Log.d(TAG, "Lid closed")
+                LiveUpdateNotification.resetCaseOpenReminderOnLidClose()
             }
         }
 
@@ -339,6 +350,26 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 caseCharging = caseCharging == true
             )
             updateBattery()
+
+            if (!wasConnectedForLive
+                && sharedPreferences.getBoolean("show_live_update_notification", true)
+            ) {
+                val battery = batteryNotification.getBattery()
+                val hasMeaningfulBattery = battery.any {
+                    it.status != BatteryStatus.DISCONNECTED && it.level > 0
+                }
+                if (hasMeaningfulBattery) {
+                    val name = sharedPreferences.getString("name", "AirPods Pro") ?: "AirPods"
+                    LiveUpdateNotification.show(
+                        this@AirPodsService.applicationContext,
+                        name,
+                        battery,
+                        headsUp = true,
+                        currentListeningMode = currentListeningModeInt()
+                    )
+                    wasConnectedForLive = true
+                }
+            }
             Log.d(TAG, "Battery changed")
         }
 
@@ -912,10 +943,19 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             override fun onControlCommandReceived(controlCommand: ByteArray) {
                 val command = AACPManager.ControlCommand.fromByteArray(controlCommand)
                 if (command.identifier == AACPManager.Companion.ControlCommandIdentifiers.LISTENING_MODE.value) {
-                    ancNotification.setStatus(byteArrayOf(command.value.takeIf { it.isNotEmpty() }
-                        ?.get(0) ?: 0x00.toByte()))
+                    val newMode = command.value.takeIf { it.isNotEmpty() }?.get(0) ?: 0x00.toByte()
+                    ancNotification.setStatus(byteArrayOf(newMode))
                     sendANCBroadcast()
                     updateNoiseControlWidget()
+                    if (sharedPreferences.getBoolean("show_live_update_notification", true)) {
+                        val name = sharedPreferences.getString("name", "AirPods Pro") ?: "AirPods"
+                        LiveUpdateNotification.headsUpOnListeningModeChange(
+                            this@AirPodsService.applicationContext,
+                            name,
+                            batteryNotification.getBattery(),
+                            newMode
+                        )
+                    }
                 }
             }
 
@@ -1636,6 +1676,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
     var popupShown = false
     fun showPopup(service: Service, name: String) {
+        if (!sharedPreferences.getBoolean("show_bottom_sheet_popup", true)) {
+            return
+        }
         if (!Settings.canDrawOverlays(service)) {
             Log.d(TAG, "No permission for SYSTEM_ALERT_WINDOW")
             return
@@ -1660,6 +1703,25 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         otherDeviceName: String? = null
     ) {
         Log.d(TAG, "Showing island window")
+        if (sharedPreferences.getBoolean("show_live_update_notification", true)) {
+            val battery = batteryNotification.getBattery()
+            val hasMeaningfulBattery = battery.any {
+                it.status != BatteryStatus.DISCONNECTED && it.level > 0
+            }
+            if (hasMeaningfulBattery) {
+                val name = sharedPreferences.getString("name", "AirPods Pro") ?: "AirPods"
+                LiveUpdateNotification.show(
+                    service.applicationContext,
+                    name,
+                    battery,
+                    headsUp = true,
+                    currentListeningMode = currentListeningModeInt()
+                )
+            }
+        }
+        if (!sharedPreferences.getBoolean("show_island_popup", true)) {
+            return
+        }
         if (!Settings.canDrawOverlays(service)) {
             Log.d(TAG, "No permission for SYSTEM_ALERT_WINDOW")
             return
@@ -1733,6 +1795,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         notificationManager.createNotificationChannel(disconnectedNotificationChannel)
         notificationManager.createNotificationChannel(connectedNotificationChannel)
         notificationManager.createNotificationChannel(socketFailureChannel)
+        LiveUpdateNotification.ensureChannel(this)
 
         val notificationSettingsIntent =
             Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
@@ -2024,11 +2087,34 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         if (!::socket.isInitialized) {
             return
         }
+
+        val liveEnabled = sharedPreferences.getBoolean("show_live_update_notification", true)
+        val resolvedName = airpodsName ?: config.deviceName ?: "AirPods"
+
         if (connected && (config.bleOnlyMode || socket.isConnected)) {
+            if (liveEnabled && batteryList != null) {
+                val hasMeaningfulBattery = batteryList.any {
+                    it.status != BatteryStatus.DISCONNECTED && it.level > 0
+                }
+                val mode = currentListeningModeInt()
+                if (!wasConnectedForLive && hasMeaningfulBattery) {
+                    LiveUpdateNotification.show(this, resolvedName, batteryList, headsUp = true, currentListeningMode = mode)
+                    wasConnectedForLive = true
+                } else if (wasConnectedForLive) {
+                    LiveUpdateNotification.update(this, resolvedName, batteryList, currentListeningMode = mode)
+                }
+                LiveUpdateNotification.checkLowBattery(this, batteryList)
+                notificationManager.cancel(1)
+                notificationManager.cancel(2)
+                return
+            }
+
+            LiveUpdateNotification.cancelAll(this)
+
             val updatedNotificationBuilder =
                 NotificationCompat.Builder(this, "airpods_connection_status")
                     .setSmallIcon(R.drawable.airpods)
-                    .setContentTitle(airpodsName ?: config.deviceName).setContentText(
+                    .setContentTitle(resolvedName).setContentText(
                         """${
                         batteryList?.find { it.component == BatteryComponent.LEFT }?.let {
                             if (it.status != BatteryStatus.DISCONNECTED) {
@@ -2072,6 +2158,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             notificationManager.cancel(1)
         } else if (!connected) {
             notificationManager.cancel(2)
+            LiveUpdateNotification.cancelAll(this)
+            LiveUpdateNotification.resetState()
+            wasConnectedForLive = false
         } else if (!config.bleOnlyMode && !socket.isConnected) {
             showSocketConnectionFailureNotification("Socket created, but not connected. Check logs")
         }

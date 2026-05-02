@@ -32,7 +32,10 @@ data class AppSettingsUiState(
     val cameraPackageError: String? = null,
     val vendorIdHook: Boolean = false,
     val isPremium: Boolean = false,
-    val connectionSuccessful: Boolean = false
+    val connectionSuccessful: Boolean = false,
+    val showBottomSheetPopup: Boolean = true,
+    val showIslandPopup: Boolean = true,
+    val showLiveUpdateNotification: Boolean = true
 )
 
 class AppSettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -70,6 +73,13 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun loadSettings() {
+        if (!sharedPreferences.contains("show_live_update_notification")) {
+            val isUpgrader = sharedPreferences.getBoolean("connection_successful", false)
+            if (isUpgrader) {
+                sharedPreferences.edit { putBoolean("show_live_update_notification", false) }
+            }
+        }
+
         _uiState.update { currentState ->
             currentState.copy(
                 showPhoneBatteryInWidget = sharedPreferences.getBoolean("show_phone_battery_in_widget", false),
@@ -86,7 +96,10 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
                 conversationalAwarenessVolume = sharedPreferences.getInt("conversational_awareness_volume", 43).toFloat(),
                 cameraPackageValue = sharedPreferences.getString("custom_camera_package", "") ?: "",
                 vendorIdHook = xposedRemotePref.getBoolean("vendor_id_hook", false),
-                connectionSuccessful = sharedPreferences.getBoolean("connection_successful", false)
+                connectionSuccessful = sharedPreferences.getBoolean("connection_successful", false),
+                showBottomSheetPopup = sharedPreferences.getBoolean("show_bottom_sheet_popup", true),
+                showIslandPopup = sharedPreferences.getBoolean("show_island_popup", true),
+                showLiveUpdateNotification = sharedPreferences.getBoolean("show_live_update_notification", true)
             )
         }
     }
@@ -175,5 +188,20 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
     fun setVendorIdHook(enabled: Boolean) {
         xposedRemotePref.putBoolean("vendor_id_hook", enabled)
         _uiState.update { it.copy(vendorIdHook = enabled) }
+    }
+
+    fun setShowBottomSheetPopup(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean("show_bottom_sheet_popup", enabled) }
+        _uiState.update { it.copy(showBottomSheetPopup = enabled) }
+    }
+
+    fun setShowIslandPopup(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean("show_island_popup", enabled) }
+        _uiState.update { it.copy(showIslandPopup = enabled) }
+    }
+
+    fun setShowLiveUpdateNotification(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean("show_live_update_notification", enabled) }
+        _uiState.update { it.copy(showLiveUpdateNotification = enabled) }
     }
 }
