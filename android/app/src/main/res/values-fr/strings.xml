@@ -210,4 +210,19 @@
     <string name="listening_mode_transparency_description">Laisser entrer les sons extérieurs</string>
     <string name="listening_mode_adaptive_description">Ajuster dynamiquement les sons extérieurs</string>
     <string name="listening_mode_noise_cancellation_description">Bloquer les sons extérieurs</string>
+    <string name="popup_animations">Animations contextuelles</string>
+    <string name="show_bottom_sheet_popup">Fenêtre contextuelle en bas</string>
+    <string name="show_bottom_sheet_popup_description">Afficher la fenêtre contextuelle de style iOS en bas de l\'écran lors de la connexion des AirPods.</string>
+    <string name="show_island_popup">Fenêtre Dynamic Island</string>
+    <string name="show_island_popup_description">Afficher la fenêtre de style Dynamic Island en haut de l\'écran pour les événements de connexion et de transfert.</string>
+    <string name="show_live_update_notification">Notification Live Update</string>
+    <string name="show_live_update_notification_description">Notification persistante avec batterie et état de connexion. Apparaît en grand lors de la connexion, du transfert, du changement de mode d\'écoute et en cas de batterie faible. Si désactivée, la notification classique est affichée.</string>
+    <string name="live_update_low_battery_left">AirPod gauche %1$d%%</string>
+    <string name="live_update_low_battery_right">AirPod droit %1$d%%</string>
+    <string name="live_update_low_battery_case">Boîtier AirPods %1$d%%</string>
+    <string name="live_update_low_battery_body">Batterie faible</string>
+    <string name="live_update_case_open_title">Boîtier presque vide</string>
+    <string name="live_update_case_open_body">À recharger bientôt. Actuellement à %1$d%%</string>
+    <string name="live_update_channel_name">AirPods Live Update</string>
+    <string name="live_update_channel_description">Notification persistante de l\'état de batterie et de connexion avec affichage en grand lors des événements importants.</string>
 </resources>
