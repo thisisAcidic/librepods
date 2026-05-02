@@ -197,6 +197,20 @@ fun AppSettingsScreen(
                         onCheckedChange = viewModel::setShowIslandPopup,
                         independent = false
                     )
+
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = Color(0x40888888),
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    StyledToggle(
+                        label = stringResource(R.string.show_live_update_notification),
+                        description = stringResource(R.string.show_live_update_notification_description),
+                        checked = state.showLiveUpdateNotification,
+                        onCheckedChange = viewModel::setShowLiveUpdateNotification,
+                        independent = false
+                    )
                 }
 
                 Text(
