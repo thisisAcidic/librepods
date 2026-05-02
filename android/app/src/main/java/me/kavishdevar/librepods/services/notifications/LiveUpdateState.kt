@@ -40,11 +40,10 @@ class LiveUpdateState {
     }
 
     fun shouldFireListeningModeChange(newMode: Byte): Boolean {
-        if (lastListeningMode != newMode) {
-            lastListeningMode = newMode
-            return true
-        }
-        return false
+        val previous = lastListeningMode
+        lastListeningMode = newMode
+        if (previous == null) return false
+        return previous != newMode
     }
 
     fun reset() {
