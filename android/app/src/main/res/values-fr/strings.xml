@@ -225,4 +225,9 @@
     <string name="live_update_case_open_body">À recharger bientôt. Actuellement à %1$d%%</string>
     <string name="live_update_channel_name">AirPods Live Update</string>
     <string name="live_update_channel_description">Notification persistante de l\'état de batterie et de connexion avec affichage en grand lors des événements importants.</string>
+    <string name="battery_section">Batterie</string>
+    <string name="remembered_battery_levels">Niveaux de batterie mémorisés</string>
+    <string name="remembered_battery_levels_description">Afficher le dernier niveau connu lorsqu\'un AirPod ou le boîtier n\'est pas connecté.</string>
+    <string name="remembered_battery_duration">Mémoriser pendant</string>
+    <string name="remembered_battery_duration_unit">%1$d h</string>
 </resources>
