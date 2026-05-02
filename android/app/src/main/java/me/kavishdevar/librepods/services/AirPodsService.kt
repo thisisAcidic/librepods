@@ -91,6 +91,7 @@ import me.kavishdevar.librepods.bluetooth.BluetoothConnectionManager
 import me.kavishdevar.librepods.data.AirPodsInstance
 import me.kavishdevar.librepods.data.AirPodsModels
 import me.kavishdevar.librepods.data.AirPodsNotifications
+import me.kavishdevar.librepods.services.notifications.LiveUpdateNotification
 import me.kavishdevar.librepods.data.Battery
 import me.kavishdevar.librepods.data.BatteryComponent
 import me.kavishdevar.librepods.data.BatteryStatus
@@ -1739,6 +1740,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         notificationManager.createNotificationChannel(disconnectedNotificationChannel)
         notificationManager.createNotificationChannel(connectedNotificationChannel)
         notificationManager.createNotificationChannel(socketFailureChannel)
+        LiveUpdateNotification.ensureChannel(this)
 
         val notificationSettingsIntent =
             Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
@@ -2030,11 +2032,25 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         if (!::socket.isInitialized) {
             return
         }
+
+        val liveEnabled = sharedPreferences.getBoolean("show_live_update_notification", true)
+        val resolvedName = airpodsName ?: config.deviceName ?: "AirPods"
+
         if (connected && (config.bleOnlyMode || socket.isConnected)) {
+            if (liveEnabled && batteryList != null) {
+                LiveUpdateNotification.update(this, resolvedName, batteryList)
+                LiveUpdateNotification.checkLowBattery(this, batteryList)
+                notificationManager.cancel(1)
+                notificationManager.cancel(2)
+                return
+            }
+
+            LiveUpdateNotification.cancelAll(this)
+
             val updatedNotificationBuilder =
                 NotificationCompat.Builder(this, "airpods_connection_status")
                     .setSmallIcon(R.drawable.airpods)
-                    .setContentTitle(airpodsName ?: config.deviceName).setContentText(
+                    .setContentTitle(resolvedName).setContentText(
                         """${
                         batteryList?.find { it.component == BatteryComponent.LEFT }?.let {
                             if (it.status != BatteryStatus.DISCONNECTED) {
@@ -2078,6 +2094,8 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             notificationManager.cancel(1)
         } else if (!connected) {
             notificationManager.cancel(2)
+            LiveUpdateNotification.cancelAll(this)
+            LiveUpdateNotification.resetState()
         } else if (!config.bleOnlyMode && !socket.isConnected) {
             showSocketConnectionFailureNotification("Socket created, but not connected. Check logs")
         }
