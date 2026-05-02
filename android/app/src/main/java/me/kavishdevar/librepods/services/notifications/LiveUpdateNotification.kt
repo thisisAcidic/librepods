@@ -49,20 +49,22 @@ object LiveUpdateNotification {
         context: Context,
         airpodsName: String,
         batteryList: List<Battery>,
-        headsUp: Boolean
+        headsUp: Boolean,
+        currentListeningMode: Int
     ) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        val builder = buildMain(context, airpodsName, batteryList, headsUp)
+        val builder = buildMain(context, airpodsName, batteryList, headsUp, currentListeningMode)
         nm.notify(NOTIF_ID_MAIN, builder.build())
     }
 
     fun update(
         context: Context,
         airpodsName: String,
-        batteryList: List<Battery>
+        batteryList: List<Battery>,
+        currentListeningMode: Int
     ) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        val builder = buildMain(context, airpodsName, batteryList, headsUp = false)
+        val builder = buildMain(context, airpodsName, batteryList, headsUp = false, currentListeningMode)
         nm.notify(NOTIF_ID_MAIN, builder.build())
     }
 
@@ -125,7 +127,7 @@ object LiveUpdateNotification {
         newMode: Byte
     ) {
         if (!state.shouldFireListeningModeChange(newMode)) return
-        show(context, airpodsName, batteryList, headsUp = true)
+        show(context, airpodsName, batteryList, headsUp = true, currentListeningMode = newMode.toInt())
     }
 
     fun cancelAll(context: Context) {
@@ -141,7 +143,8 @@ object LiveUpdateNotification {
         context: Context,
         airpodsName: String,
         batteryList: List<Battery>,
-        headsUp: Boolean
+        headsUp: Boolean,
+        currentListeningMode: Int
     ): NotificationCompat.Builder {
         val left = batteryList.firstOrNull { it.component == BatteryComponent.LEFT }
         val right = batteryList.firstOrNull { it.component == BatteryComponent.RIGHT }
@@ -192,6 +195,27 @@ object LiveUpdateNotification {
             .setOnlyAlertOnce(!headsUp)
             .setRequestPromotedOngoing(true)
             .addExtras(samsungLiveExtras)
+            .addAction(
+                listeningModeIconRes(currentListeningMode),
+                context.getString(listeningModeLabelRes(currentListeningMode)),
+                listeningModePendingIntent(context)
+            )
+    }
+
+    private fun listeningModeLabelRes(mode: Int): Int = when (mode) {
+        1 -> R.string.off
+        2 -> R.string.noise_cancellation
+        3 -> R.string.transparency
+        4 -> R.string.adaptive
+        else -> R.string.noise_control
+    }
+
+    private fun listeningModeIconRes(mode: Int): Int = when (mode) {
+        1 -> R.drawable.close
+        2 -> R.drawable.noise_cancellation
+        3 -> R.drawable.transparency
+        4 -> R.drawable.adaptive
+        else -> R.drawable.noise_cancellation
     }
 
     private fun mainActivityPendingIntent(context: Context): PendingIntent {
@@ -199,6 +223,18 @@ object LiveUpdateNotification {
             context,
             0,
             Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun listeningModePendingIntent(context: Context): PendingIntent {
+        val intent = Intent("me.kavishdevar.librepods.SET_ANC_MODE").apply {
+            setPackage(context.packageName)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            2,
+            intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
