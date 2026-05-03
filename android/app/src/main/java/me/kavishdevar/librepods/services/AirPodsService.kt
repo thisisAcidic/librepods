@@ -701,6 +701,11 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         connectionReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent?.action == AirPodsNotifications.AIRPODS_CONNECTION_DETECTED) {
+                    if (::socket.isInitialized && socket.isConnected) {
+                        Log.d(TAG, "Connection broadcast received but socket already connected, ignoring")
+                        return
+                    }
+
                     device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         intent.getParcelableExtra("device", BluetoothDevice::class.java)!!
                     } else {
