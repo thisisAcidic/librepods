@@ -288,4 +288,6 @@
     <string name="subject">Subject</string>
     <string name="describe_your_issue">Describe your issue</string>
     <string name="widget_noise_cancellation">ANC</string>
+    <string name="low_latency_ble_scan">Low-latency BLE scanning</string>
+    <string name="low_latency_ble_scan_description">Process every BLE advertisement immediately instead of in 500 ms batches. The case-open popup and other BLE-driven events appear faster, at the cost of higher battery use. If you don\'t know what this means, leave this option OFF.</string>
 </resources>

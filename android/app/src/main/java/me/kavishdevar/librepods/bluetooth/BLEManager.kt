@@ -83,6 +83,7 @@ class BLEManager(private val context: Context) {
     private var currentGlobalLidState: Boolean? = null
     private var lastBroadcastTime: Long = 0
     private val processedAddresses = mutableSetOf<String>()
+    private var lowLatencyMode: Boolean = false
 
     private val lastValidCaseBatteryMap = mutableMapOf<String, Int>()
     private val modelNames = mapOf(
@@ -124,6 +125,16 @@ class BLEManager(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
+    fun setLowLatencyMode(enabled: Boolean) {
+        if (lowLatencyMode == enabled) return
+        lowLatencyMode = enabled
+        if (mScanCallback != null) {
+            stopScanning()
+            startScanning()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
     fun startScanning() {
         try {
             Log.d(TAG, "Starting BLE scanner")
@@ -153,7 +164,7 @@ class BLEManager(private val context: Context) {
                 .setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
                 .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
                 .setNumOfMatches(ScanSettings.MATCH_NUM_MAX_ADVERTISEMENT)
-                .setReportDelay(500L)
+                .setReportDelay(if (lowLatencyMode) 0L else 500L)
                 .build()
 
             val manufacturerData = ByteArray(27)
@@ -254,7 +265,7 @@ class BLEManager(private val context: Context) {
             val scanRecord = result.scanRecord ?: return
             val address = result.device.address
 
-            if (processedAddresses.contains(address)) {
+            if (!lowLatencyMode && processedAddresses.contains(address)) {
                 return
             }
 
@@ -270,7 +281,9 @@ class BLEManager(private val context: Context) {
                 Log.d(TAG, "RPA verified and added to trusted list: $address")
             }
 
-            processedAddresses.add(address)
+            if (!lowLatencyMode) {
+                processedAddresses.add(address)
+            }
             lastBroadcastTime = System.currentTimeMillis()
 
             val encryptionKey = getEncryptionKeyFromPreferences()

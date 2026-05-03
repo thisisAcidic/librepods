@@ -37,7 +37,8 @@ data class AppSettingsUiState(
     val showIslandPopup: Boolean = true,
     val showLiveUpdateNotification: Boolean = true,
     val rememberedBatteryEnabled: Boolean = true,
-    val rememberedBatteryHours: Int = 8
+    val rememberedBatteryHours: Int = 8,
+    val lowLatencyBleScan: Boolean = false
 )
 
 class AppSettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -103,7 +104,8 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
                 showIslandPopup = sharedPreferences.getBoolean("show_island_popup", true),
                 showLiveUpdateNotification = sharedPreferences.getBoolean("show_live_update_notification", true),
                 rememberedBatteryEnabled = sharedPreferences.getBoolean("remembered_battery_enabled", true),
-                rememberedBatteryHours = sharedPreferences.getInt("remembered_battery_hours", 8)
+                rememberedBatteryHours = sharedPreferences.getInt("remembered_battery_hours", 8),
+                lowLatencyBleScan = sharedPreferences.getBoolean("low_latency_ble_scan", false)
             )
         }
     }
@@ -218,5 +220,10 @@ class AppSettingsViewModel(application: Application) : AndroidViewModel(applicat
         val clamped = hours.coerceIn(1, 24)
         sharedPreferences.edit { putInt("remembered_battery_hours", clamped) }
         _uiState.update { it.copy(rememberedBatteryHours = clamped) }
+    }
+
+    fun setLowLatencyBleScan(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean("low_latency_ble_scan", enabled) }
+        _uiState.update { it.copy(lowLatencyBleScan = enabled) }
     }
 }

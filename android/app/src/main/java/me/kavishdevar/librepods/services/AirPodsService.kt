@@ -830,6 +830,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 //        }
 
         CoroutineScope(Dispatchers.IO).launch {
+            bleManager.setLowLatencyMode(sharedPreferences.getBoolean("low_latency_ble_scan", false))
             bleManager.startScanning()
         }
     }
@@ -1522,6 +1523,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
             "head_gestures" -> config.headGestures = preferences.getBoolean(key, true)
             "off_listening_mode" -> updateNoiseControlWidget()
+            "low_latency_ble_scan" -> bleManager.setLowLatencyMode(preferences.getBoolean(key, false))
             "disconnect_when_not_wearing" -> config.disconnectWhenNotWearing =
                 preferences.getBoolean(key, false)
 

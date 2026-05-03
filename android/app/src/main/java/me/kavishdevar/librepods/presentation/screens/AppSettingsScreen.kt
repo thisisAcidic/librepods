@@ -492,6 +492,17 @@ fun AppSettingsScreen(
                     independent = true,
                     enabled = state.isPremium
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                StyledToggle(
+                    label = stringResource(R.string.low_latency_ble_scan),
+                    description = stringResource(R.string.low_latency_ble_scan_description),
+                    checked = state.lowLatencyBleScan,
+                    onCheckedChange = viewModel::setLowLatencyBleScan,
+                    independent = true,
+                    enabled = state.isPremium
+                )
                 Spacer(modifier = Modifier.height(16.dp))
             } else {
                 Box(
