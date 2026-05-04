@@ -2634,10 +2634,14 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         Log.d(
             TAG, "owns connection: $ownsConnection"
         )
-        if (!::socket.isInitialized) return
-        if (socket.isConnected) {
-            if (!XposedRemotePrefProvider.create().getBoolean("vendor_id_hook", false) || ownsConnection == 0) {
-                Log.d(TAG, "not taking over, vendorid is probably not set to apple")
+        if (::socket.isInitialized && socket.isConnected) {
+            val hasVendorIdHook = XposedRemotePrefProvider.create().getBoolean("vendor_id_hook", false)
+            if (startHeadTrackingAgain && !hasVendorIdHook) {
+                Log.d(TAG, "no vendor_id_hook, head tracking running without AAP takeover")
+                return
+            }
+            if (hasVendorIdHook && ownsConnection == 0) {
+                Log.d(TAG, "ownsConnection is 0, bailing takeover")
                 return
             }
             if (aacpManager.getControlCommandStatus(AACPManager.Companion.ControlCommandIdentifiers.OWNS_CONNECTION)?.value[0]?.toInt() != 1 || (aacpManager.audioSource?.mac != localMac && aacpManager.audioSource?.type != AACPManager.Companion.AudioSourceType.NONE)) {
@@ -2777,6 +2781,18 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             } else {
                 connectToSocket(bluetoothAdapter, device!!)
                 connectAudio(this, device)
+                CoroutineScope(Dispatchers.IO).launch {
+                    delay(1500)
+                    if (aacpManager.connectedDevices.any { it.mac != localMac }) {
+                        Log.d(TAG, "other device owns connection, sending AAP hijack")
+                        aacpManager.sendControlCommand(
+                            AACPManager.Companion.ControlCommandIdentifiers.OWNS_CONNECTION.value, 1
+                        )
+                        aacpManager.sendMediaInformataion(localMac)
+                        aacpManager.sendSmartRoutingShowUI(localMac)
+                        aacpManager.sendHijackRequest(localMac)
+                    }
+                }
 //                isConnectedLocally = true
             }
         }
