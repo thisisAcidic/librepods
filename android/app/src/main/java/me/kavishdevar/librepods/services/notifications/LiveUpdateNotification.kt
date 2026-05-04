@@ -74,6 +74,7 @@ object LiveUpdateNotification {
 
         batteryList.forEach { battery ->
             if (battery.status == BatteryStatus.DISCONNECTED) return@forEach
+            if (battery.status == BatteryStatus.UNKNOWN) return@forEach
             if (!state.shouldFireLowBattery(battery.component, battery.level)) return@forEach
 
             val (titleRes, notifId) = when (battery.component) {
@@ -100,6 +101,7 @@ object LiveUpdateNotification {
         val caseBattery = batteryList.firstOrNull { it.component == BatteryComponent.CASE }
             ?: return
         if (caseBattery.status == BatteryStatus.DISCONNECTED) return
+        if (caseBattery.status == BatteryStatus.UNKNOWN) return
         if (caseBattery.level <= 0) return
         if (!state.shouldFireCaseOpenReminder(caseBattery.level)) return
 
@@ -151,17 +153,23 @@ object LiveUpdateNotification {
         val case = displayList.firstOrNull { it.component == BatteryComponent.CASE }
 
         val liveEars = listOfNotNull(left, right).filter {
-            it.status != BatteryStatus.DISCONNECTED && !it.isRemembered
+            it.status != BatteryStatus.DISCONNECTED && it.status != BatteryStatus.UNKNOWN && !it.isRemembered
         }
-        val anyEar = listOfNotNull(left, right).filter { it.status != BatteryStatus.DISCONNECTED }
+        val anyEar = listOfNotNull(left, right).filter {
+            it.status != BatteryStatus.DISCONNECTED && it.status != BatteryStatus.UNKNOWN
+        }
         val lowestLiveEar = liveEars.minByOrNull { it.level }?.level
         val lowestAnyEar = anyEar.minByOrNull { it.level }?.level
         val anyRememberedEar = anyEar.any { it.isRemembered }
 
         fun renderEntry(label: String, entry: DisplayBattery?): String? {
             if (entry == null || entry.status == BatteryStatus.DISCONNECTED) return null
-            val charging = if (entry.status == BatteryStatus.CHARGING) "⚡" else ""
-            val core = "$label $charging${entry.level}%"
+            val core = if (entry.status == BatteryStatus.UNKNOWN) {
+                "$label ?"
+            } else {
+                val charging = if (entry.status == BatteryStatus.CHARGING) "⚡" else ""
+                "$label $charging${entry.level}%"
+            }
             return if (entry.isRemembered) "($core)" else core
         }
 
