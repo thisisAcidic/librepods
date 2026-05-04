@@ -41,6 +41,7 @@ object BatteryStatus {
     const val NOT_CHARGING = 2
     const val DISCONNECTED = 4
     const val OPTIMIZED_CHARGING = 5
+    const val UNKNOWN = 6
 }
 
 @Parcelize
@@ -60,9 +61,12 @@ data class Battery(val component: Int, val level: Int, val status: Int) : Parcel
             BatteryStatus.NOT_CHARGING -> "NOT_CHARGING"
             BatteryStatus.DISCONNECTED -> "DISCONNECTED"
             BatteryStatus.OPTIMIZED_CHARGING -> "OPTIMIZED_CHARGING"
+            BatteryStatus.UNKNOWN -> "UNKNOWN"
             else -> null
         }
     }
+
+    fun displayLabel(): String = if (status == BatteryStatus.UNKNOWN) "?" else "${level}%"
 }
 
 enum class NoiseControlMode {
@@ -171,16 +175,21 @@ class AirPodsNotifications {
         }
 
         fun setBatteryDirect(
-            leftLevel: Int,
+            leftLevel: Int?,
             leftCharging: Boolean,
-            rightLevel: Int,
+            rightLevel: Int?,
             rightCharging: Boolean,
-            caseLevel: Int,
+            caseLevel: Int?,
             caseCharging: Boolean
         ) {
-            first = Battery(BatteryComponent.LEFT, leftLevel, if (leftCharging) BatteryStatus.CHARGING else BatteryStatus.NOT_CHARGING)
-            second = Battery(BatteryComponent.RIGHT, rightLevel, if (rightCharging) BatteryStatus.CHARGING else BatteryStatus.NOT_CHARGING)
-            case = Battery(BatteryComponent.CASE, caseLevel, if (caseCharging) BatteryStatus.CHARGING else BatteryStatus.NOT_CHARGING)
+            fun statusFor(level: Int?, charging: Boolean) = when {
+                level == null -> BatteryStatus.UNKNOWN
+                charging -> BatteryStatus.CHARGING
+                else -> BatteryStatus.NOT_CHARGING
+            }
+            first = Battery(BatteryComponent.LEFT, leftLevel ?: 0, statusFor(leftLevel, leftCharging))
+            second = Battery(BatteryComponent.RIGHT, rightLevel ?: 0, statusFor(rightLevel, rightCharging))
+            case = Battery(BatteryComponent.CASE, caseLevel ?: 0, statusFor(caseLevel, caseCharging))
         }
 
         fun setBattery(data: ByteArray) {
