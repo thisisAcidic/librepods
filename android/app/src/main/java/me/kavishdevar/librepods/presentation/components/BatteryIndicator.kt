@@ -186,7 +186,7 @@ fun BatteryIndicator(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "$prefix $batteryPercentage%",
+            text = if (status == BatteryStatus.UNKNOWN) "$prefix ?" else "$prefix $batteryPercentage%",
             color = batteryTextColor,
             style = TextStyle(
                 fontSize = 14.sp,

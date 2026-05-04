@@ -256,9 +256,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             }
             Log.d(TAG, "Device status changed")
             if (socket.isConnected) return
-            val leftLevel = bleManager.getMostRecentStatus()?.leftBattery ?: 0
-            val rightLevel = bleManager.getMostRecentStatus()?.rightBattery ?: 0
-            val caseLevel = bleManager.getMostRecentStatus()?.caseBattery ?: 0
+            val leftLevel = bleManager.getMostRecentStatus()?.leftBattery
+            val rightLevel = bleManager.getMostRecentStatus()?.rightBattery
+            val caseLevel = bleManager.getMostRecentStatus()?.caseBattery
             val leftCharging = bleManager.getMostRecentStatus()?.isLeftCharging
             val rightCharging = bleManager.getMostRecentStatus()?.isRightCharging
             val caseCharging = bleManager.getMostRecentStatus()?.isCaseCharging
@@ -289,9 +289,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                         ?: "AirPods"
                 )
                 if (socket.isConnected) return
-                val leftLevel = bleManager.getMostRecentStatus()?.leftBattery ?: 0
-                val rightLevel = bleManager.getMostRecentStatus()?.rightBattery ?: 0
-                val caseLevel = bleManager.getMostRecentStatus()?.caseBattery ?: 0
+                val leftLevel = bleManager.getMostRecentStatus()?.leftBattery
+                val rightLevel = bleManager.getMostRecentStatus()?.rightBattery
+                val caseLevel = bleManager.getMostRecentStatus()?.caseBattery
                 val leftCharging = bleManager.getMostRecentStatus()?.isLeftCharging
                 val rightCharging = bleManager.getMostRecentStatus()?.isRightCharging
                 val caseCharging = bleManager.getMostRecentStatus()?.isCaseCharging
@@ -323,9 +323,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
         override fun onBatteryChanged(device: BLEManager.AirPodsStatus) {
             if (socket.isConnected) return
-            val leftLevel = bleManager.getMostRecentStatus()?.leftBattery ?: 0
-            val rightLevel = bleManager.getMostRecentStatus()?.rightBattery ?: 0
-            val caseLevel = bleManager.getMostRecentStatus()?.caseBattery ?: 0
+            val leftLevel = bleManager.getMostRecentStatus()?.leftBattery
+            val rightLevel = bleManager.getMostRecentStatus()?.rightBattery
+            val caseLevel = bleManager.getMostRecentStatus()?.caseBattery
             val leftCharging = bleManager.getMostRecentStatus()?.isLeftCharging
             val rightCharging = bleManager.getMostRecentStatus()?.isRightCharging
             val caseCharging = bleManager.getMostRecentStatus()?.isCaseCharging
@@ -1887,9 +1887,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             val caseBattery =
                 batteryNotification.getBattery().find { it.component == BatteryComponent.CASE }
 
-            it.setTextViewText(R.id.left_battery_widget, leftBattery?.let {
-                "${it.level}%"
-            } ?: "")
+            it.setTextViewText(R.id.left_battery_widget, leftBattery?.displayLabel() ?: "")
             it.setProgressBar(
                 R.id.left_battery_progress, 100, leftBattery?.level ?: 0, false
             )
@@ -1898,9 +1896,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 if (leftBattery?.status == BatteryStatus.CHARGING) View.VISIBLE else View.GONE
             )
 
-            it.setTextViewText(R.id.right_battery_widget, rightBattery?.let {
-                "${it.level}%"
-            } ?: "")
+            it.setTextViewText(R.id.right_battery_widget, rightBattery?.displayLabel() ?: "")
             it.setProgressBar(
                 R.id.right_battery_progress, 100, rightBattery?.level ?: 0, false
             )
@@ -1909,9 +1905,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                 if (rightBattery?.status == BatteryStatus.CHARGING) View.VISIBLE else View.GONE
             )
 
-            it.setTextViewText(R.id.case_battery_widget, caseBattery?.let {
-                "${it.level}%"
-            } ?: "")
+            it.setTextViewText(R.id.case_battery_widget, caseBattery?.displayLabel() ?: "")
             it.setProgressBar(
                 R.id.case_battery_progress, 100, caseBattery?.level ?: 0, false
             )
@@ -2032,7 +2026,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                         """${
                         batteryList?.find { it.component == BatteryComponent.LEFT }?.let {
                             if (it.status != BatteryStatus.DISCONNECTED) {
-                                "L: ${if (it.status == BatteryStatus.CHARGING) "⚡" else ""} ${it.level}%"
+                                "L: ${if (it.status == BatteryStatus.CHARGING) "⚡" else ""} ${it.displayLabel()}"
                             } else {
                                 ""
                             }
@@ -2040,7 +2034,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                     } ${
                         batteryList?.find { it.component == BatteryComponent.RIGHT }?.let {
                             if (it.status != BatteryStatus.DISCONNECTED) {
-                                "R: ${if (it.status == BatteryStatus.CHARGING) "⚡" else ""} ${it.level}%"
+                                "R: ${if (it.status == BatteryStatus.CHARGING) "⚡" else ""} ${it.displayLabel()}"
                             } else {
                                 ""
                             }
@@ -2048,7 +2042,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                     } ${
                         batteryList?.find { it.component == BatteryComponent.CASE }?.let {
                             if (it.status != BatteryStatus.DISCONNECTED) {
-                                "Case: ${if (it.status == BatteryStatus.CHARGING) "⚡" else ""} ${it.level}%"
+                                "Case: ${if (it.status == BatteryStatus.CHARGING) "⚡" else ""} ${it.displayLabel()}"
                             } else {
                                 ""
                             }

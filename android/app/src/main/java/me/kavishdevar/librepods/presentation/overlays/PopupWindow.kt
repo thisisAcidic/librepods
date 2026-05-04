@@ -219,7 +219,7 @@ class PopupWindow(
 
         batteryLeftText.text = batteryList.find { it.component == BatteryComponent.LEFT }?.let {
             if (it.status != BatteryStatus.DISCONNECTED) {
-                "\uDBC3\uDC8E    ${it.level}%"
+                "\uDBC3\uDC8E    ${it.displayLabel()}"
             } else {
                 ""
             }
@@ -227,7 +227,7 @@ class PopupWindow(
 
         batteryRightText.text = batteryList.find { it.component == BatteryComponent.RIGHT }?.let {
             if (it.status != BatteryStatus.DISCONNECTED) {
-                "\uDBC3\uDC8D    ${it.level}%"
+                "\uDBC3\uDC8D    ${it.displayLabel()}"
             } else {
                 ""
             }
@@ -235,7 +235,7 @@ class PopupWindow(
 
         batteryCaseText.text = batteryList.find { it.component == BatteryComponent.CASE }?.let {
             if (it.status != BatteryStatus.DISCONNECTED) {
-                "\uDBC3\uDE6C    ${it.level}%"
+                "\uDBC3\uDE6C    ${it.displayLabel()}"
             } else {
                 ""
             }
